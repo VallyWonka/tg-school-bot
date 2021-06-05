@@ -1,0 +1,13 @@
+python-decouple
+wiktionaryparser
+wikipedia
+sumy
+nltk
+beautifulsoup4
+requests
+imgkit
+ipymarkup
+natasha
+telegram
+python-telegram-bot
+python-telegram-bot[socks]
