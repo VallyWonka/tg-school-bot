@@ -16,26 +16,45 @@ from telegram.ext import CallbackContext, CommandHandler, Filters, MessageHandle
 from telegram.constants import MAX_CAPTION_LENGTH, MAX_MESSAGE_LENGTH
 
 from setup import PROXY, TOKEN
-from sentence_analysis import (
+
+from constant_messages import (
+    HELP_MESSAGE,
+    THANKS_FOR_FEEDBACK,
+
     SENTENCE_TUTORIAL,
     INCORRECT_SYNT_COMMAND_MESSAGE,
 
+    LITRA_TUTORIAL,
+    INCORRECT_LITRA_COMMAND_MESSAGE,
+    WIKIPEDIA_TUTORIAL,
+    INCORRECT_WIKIPEDIA_QUERY,
+    GOT_YOU_A_RANDOM_PAGE_ENJOY,
+
+    SPELLCHECK_TUTORIAL,
+
+    SUMMARIZATION_TUTORIAL,
+    INCORRECT_SUMMARY_COMMAND_MESSAGE,
+    SUGGEST_LOOKING_FOR_SHORTWORK,
+    NO_SHORTWORK_FOUND,
+    SUGGEST_ANOTHER_ALGORITHM,
+
+    EMPTY_OR_NOTHING_FOUND,
+
+    EMPTY_SENTENCE
+)
+
+from sentence_analysis import (
     lemmatize,
     morph_analyze,
     synt_analyze
 )
 from scraper import (
-    LITRA_TUTORIAL,
-    INCORRECT_LITRA_COMMAND_MESSAGE,
-    WIKIPEDIA_TUTORIAL,
-    INCORRECT_WIKIPEDIA_QUERY,
-
     get_litra,
     get_shortwork_link,
     get_wikipedia
 )
-from check_dic import SPELLCHECK_TUTORIAL, get_most_likely, get_counts
-from summarization import SUMMARIZATION_TUTORIAL, INCORRECT_SUMMARY_COMMAND_MESSAGE, summarization
+from check_dic import get_most_likely, get_counts
+from summarization import summarization
 
 # Enable logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -65,27 +84,7 @@ def start(update: Update, context: CallbackContext):
 
 def chat_help(update: Update, context: CallbackContext):
     """Send a message when the command /help is issued."""
-    update.message.reply_text("""Вот, что я умею:
-/start - сказать "привет" :)
-/help - помощь
-/suggestion <твоё предложение> - здесь можно оставить фидбек или предложить новую фичу :)
-
-/relwords <слово> - получить синонимы, антонимы и похожие слова к заданному слову
-
-/spellcheck <предложение> - проверить предложение на ошибки
-/spellcheck_tutorial - как пользоваться функцией /spellcheck
-
-/sentence(_<виды разбора>) <предложение> - лемматизация, морфологический и синтаксический разбор предложения
-/sentence_tutorial - как пользоваться функцией /sentence
-
-/litra <ссылка> - получить текстовый файл с полным текстом произведения с сайта litra.ru
-/litra_tutorial - как пользоваться функцией /litra
-
-/summary(_<метод>) <ссылка> - получить сокращённую версию произведения с сайта litra.ru
-/summary_tutorial - как пользоваться функцией /summary
-
-/wikipedia <запрос> - получить статью из википедии по запросу
-/wikipedia_tutorial - как пользоваться функцией /wikipedia""")
+    update.message.reply_text(HELP_MESSAGE)
 
 
 def echo(update: Update, context: CallbackContext):
@@ -98,16 +97,16 @@ def error(update: Update, context: CallbackContext):
     logger.warning(f"Update {update} caused error {context.error}")
 
 
-def sent_tutorial(update: Update, context: CallbackContext):
-    """Explain the sentence function."""
-    update.message.reply_text(SENTENCE_TUTORIAL)
-
-
 def suggestion(update: Update, context: CallbackContext):
     with open("suggestions.txt", "a", encoding="utf-8") as file:
         file.write(f"{update.effective_user['username']}\t{update.message.text.removeprefix('/suggestion ')}\n")
-    update.message.reply_text("Спасибо, что помогаешь мне стать лучше!")
+    update.message.reply_text(THANKS_FOR_FEEDBACK)
     # TODO: create a database with reviews and suggestions
+
+
+def sent_tutorial(update: Update, context: CallbackContext):
+    """Explain the sentence function."""
+    update.message.reply_text(SENTENCE_TUTORIAL)
 
 
 def sent_analyze(update: Update,
@@ -204,7 +203,7 @@ def get_text_wikipedia(update: Update, context: CallbackContext):
         return
 
     if random:
-        caption = "По твоему запросу ничего не нашлось или он был пуст. Держи случайную страницу!"
+        caption = GOT_YOU_A_RANDOM_PAGE_ENJOY
     else:
         caption = None
 
@@ -258,8 +257,7 @@ def summary(update: Update, context: CallbackContext):
             keyboard = [[InlineKeyboardButton("Да, поищи сокращённую версию", callback_data="True"),
                          InlineKeyboardButton("Нет, спасибо", callback_data="False")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            update.message.reply_text("""Извини, у меня не получилось справиться с этим текстом! Могу предложить \
-поискать уже готовую сокращённую версию текста на litra.ru. Что скажешь?""", reply_markup=reply_markup)
+            update.message.reply_text(SUGGEST_LOOKING_FOR_SHORTWORK, reply_markup=reply_markup)
         else:
             update.message.reply_text(f"""Извини, у меня не получилось справиться со статьёй {title}! Попробуй \
 использовать другой алгоритм или другой текст.""")
@@ -267,7 +265,7 @@ def summary(update: Update, context: CallbackContext):
 
     # Create caption for random articles
     if random:
-        caption = "По твоему запросу ничего не нашлось или он был пуст. Держи случайную страницу!"
+        caption = GOT_YOU_A_RANDOM_PAGE_ENJOY
     else:
         caption = None
 
@@ -288,7 +286,7 @@ def relwords(update: Update, context: CallbackContext):
     try:
         related_words = parser.fetch(word)[0]["definitions"][0]["relatedWords"]
     except IndexError:
-        update.message.reply_text("""Кажется, ничего не нашлось. Попробуй ещё раз!""")
+        update.message.reply_text(EMPTY_OR_NOTHING_FOUND)
         return
     message_text = ""
     for reltypes in related_words:
@@ -312,7 +310,7 @@ def spellchecker(update: Update, context: CallbackContext):
     """Checks spelling in the given sentence."""
     sent = update.message.text.removeprefix("/spellcheck ")
     if sent == update.message.text:
-        update.message.reply_text("""Не забудь вписать предложение для проверки!""")
+        update.message.reply_text(EMPTY_SENTENCE)
         return
     new_sent = ""
     doc = Doc(sent)
@@ -343,14 +341,10 @@ def button_shortwork(update: Update, context: CallbackContext):
         try:
             author, title, text = get_litra(get_shortwork_link(LITRA_LINK))[:3]
         except Exception:
-            no_shortwork_message = """Кажется, к этому произведению нет \
-краткого содержания! Попробуй скачать полный текст с помощью функции /litra."""
-            context.bot.send_message(chat_id=str(update.effective_chat['id']), text=no_shortwork_message)
+            context.bot.send_message(chat_id=str(update.effective_chat['id']), text=NO_SHORTWORK_FOUND)
             return
     else:
-        another_suggestion = """Ок! Ещё можно попробовать использовать \
-другой алгоритм. Чтобы узнать, какие есть, используй функцию /summary_tutorial :)."""
-        context.bot.send_message(chat_id=str(update.effective_chat['id']), text=another_suggestion)
+        context.bot.send_message(chat_id=str(update.effective_chat['id']), text=SUGGEST_ANOTHER_ALGORITHM)
         return
 
     with tempfile.TemporaryFile(mode="a+", encoding="utf-8") as file:
@@ -409,8 +403,7 @@ if __name__ == "__main__":
     main()
 
 
-# TODO: unify error messages
-# TODO: add logging using databases
+# TODO: add logs db
 # TODO: not use BaseExceptions but understand what is going wrong and why
 # TODO: improve code readability, modulate
 # TODO: handle pylint warnings
@@ -418,5 +411,5 @@ if __name__ == "__main__":
 # TODO: make user be able to stop the bot
 # TODO: add some fun apis
 # TODO: customizable environment (e.g. custom timeout in summarization)
-# TODO: types annotations (Union и Optional, look for info in saved tg messages)
+# TODO: types annotations (Union and Optional, look for info in saved tg messages)
 # TODO: add documentation
